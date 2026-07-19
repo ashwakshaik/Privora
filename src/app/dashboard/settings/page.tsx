@@ -19,6 +19,13 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Scheduler & Alert Preferences States
+  const [scanFrequency, setScanFrequency] = useState<"weekly" | "monthly" | "quarterly">("monthly");
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [reportDelivery, setReportDelivery] = useState(true);
+  const [autopilot, setAutopilot] = useState(false);
+  const [isAlertsSaving, setIsAlertsSaving] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     
@@ -28,6 +35,10 @@ export default function SettingsPage() {
         setEmail(userSettings.scan_email || user.email);
         setAddress(userSettings.home_address || "");
         setPhone(userSettings.phone_number || "");
+        setScanFrequency(userSettings.scan_frequency || "monthly");
+        setEmailAlerts(userSettings.email_alerts_enabled !== false);
+        setReportDelivery(userSettings.report_delivery_enabled !== false);
+        setAutopilot(userSettings.autopilot_enabled || false);
       } catch (err) {
         console.error("Failed to load user settings:", err);
       }
@@ -35,6 +46,27 @@ export default function SettingsPage() {
 
     loadSettings();
   }, [user]);
+
+  const handleAlertsSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsAlertsSaving(true);
+    try {
+      await db.saveSettings(user.id, {
+        autopilot_enabled: autopilot,
+        scan_frequency: scanFrequency,
+        email_alerts_enabled: emailAlerts,
+        report_delivery_enabled: reportDelivery,
+      });
+      toast.success("Alert preferences and scheduler updated.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save alert preferences.");
+    } finally {
+      setIsAlertsSaving(false);
+    }
+  };
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,39 +223,91 @@ export default function SettingsPage() {
           <TabsContent value="notifications" className="space-y-6">
             <Card className="border-border/60 bg-card rounded-[22px] shadow-premium max-w-2xl text-left">
               <CardHeader>
-                <CardTitle className="text-base font-bold text-foreground">Alert Thresholds</CardTitle>
+                <CardTitle className="text-base font-bold text-foreground">Scan Scheduler & Alert Preferences</CardTitle>
                 <CardDescription className="text-[11px] text-muted-foreground">
-                  Toggle alert checkboxes for exposures and removals.
+                  Toggle automated scanning, scan frequencies, and email notification parameters.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3 py-1">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 rounded border-zinc-200 bg-[#09090B]/5 text-primary focus:ring-primary"
-                  />
-                  <div>
-                    <label className="text-xs font-bold text-foreground">Email New Exposure Alerts</label>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Send a message when scan cycles find your PII on a new broker registry.
-                    </p>
+              <CardContent>
+                <form onSubmit={handleAlertsSave} className="space-y-6">
+                  {/* Autopilot Checkbox */}
+                  <div className="flex items-start space-x-3 py-1">
+                    <input
+                      id="autopilotCheckbox"
+                      type="checkbox"
+                      checked={autopilot}
+                      onChange={(e) => setAutopilot(e.target.checked)}
+                      className="h-4 w-4 mt-0.5 rounded border-zinc-200 bg-[#09090B]/5 text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <div>
+                      <label htmlFor="autopilotCheckbox" className="text-xs font-bold text-foreground cursor-pointer">Enable Autopilot Mode</label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Authorizes Privora to automatically query databases and submit deletions continuously.
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-3 py-1">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 rounded border-zinc-200 bg-[#09090B]/5 text-primary focus:ring-primary"
-                  />
-                  <div>
-                    <label className="text-xs font-bold text-foreground">Monthly PDF Reports Delivery</label>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Dispatch transactional email with secure download link when reports are ready.
-                    </p>
+                  {/* Scan Frequency */}
+                  <div className="space-y-1.5 max-w-xs">
+                    <label htmlFor="scanFrequencySelect" className="text-xs font-semibold text-muted-foreground">Automatic Scan Frequency</label>
+                    <select
+                      id="scanFrequencySelect"
+                      value={scanFrequency}
+                      disabled={!autopilot}
+                      onChange={(e) => setScanFrequency(e.target.value as "weekly" | "monthly" | "quarterly")}
+                      className="w-full bg-[#09090B]/5 border border-border rounded-xl h-10 px-3 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="weekly">Weekly Sweep Scan</option>
+                      <option value="monthly">Monthly Sweep Scan</option>
+                      <option value="quarterly">Quarterly Sweep Scan</option>
+                    </select>
                   </div>
-                </div>
+
+                  {/* Email Exposure Alerts */}
+                  <div className="flex items-start space-x-3 py-1 border-t border-border/40 pt-4">
+                    <input
+                      id="emailAlertsCheckbox"
+                      type="checkbox"
+                      checked={emailAlerts}
+                      onChange={(e) => setEmailAlerts(e.target.checked)}
+                      className="h-4 w-4 mt-0.5 rounded border-zinc-200 bg-[#09090B]/5 text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <div>
+                      <label htmlFor="emailAlertsCheckbox" className="text-xs font-bold text-foreground cursor-pointer">Email New Exposure Alerts</label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Send a message when scan cycles find your PII on a new broker registry.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Report Delivery */}
+                  <div className="flex items-start space-x-3 py-1">
+                    <input
+                      id="reportDeliveryCheckbox"
+                      type="checkbox"
+                      checked={reportDelivery}
+                      onChange={(e) => setReportDelivery(e.target.checked)}
+                      className="h-4 w-4 mt-0.5 rounded border-zinc-200 bg-[#09090B]/5 text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <div>
+                      <label htmlFor="reportDeliveryCheckbox" className="text-xs font-bold text-foreground cursor-pointer">Monthly PDF Reports Delivery</label>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Dispatch transactional email with secure download link when reports are ready.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={isAlertsSaving} className="h-10 mt-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-white border-0 hover:opacity-90 font-semibold shadow-premium">
+                    {isAlertsSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving Preferences...
+                      </>
+                    ) : (
+                      "Save Preferences"
+                    )}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Privora Privacy Guard",
+  "version": "1.0.0",
+  "description": "Real-time cookie opt-out, script shield, and browser fingerprint protection by Privora.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

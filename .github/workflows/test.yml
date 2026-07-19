@@ -1,0 +1,37 @@
+name: Privora CI Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint Checks
+      run: npm run lint
+
+    - name: Compile Production Build
+      run: npm run build
+      env:
+        # Avoid next build failing due to missing env tokens
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+        NEXT_PUBLIC_SUPABASE_URL: https://placeholder-project.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+        CLERK_SECRET_KEY: sk_test_placeholder

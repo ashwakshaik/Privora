@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   MessageSquare,
   Bug,
@@ -24,7 +24,6 @@ import { db, DBFeedback } from "@/lib/supabase";
 
 export default function AdminFeedbackPage() {
   const [feedbackList, setFeedbackList] = useState<DBFeedback[]>([]);
-  const [filteredList, setFilteredList] = useState<DBFeedback[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -34,24 +33,26 @@ export default function AdminFeedbackPage() {
   const [sortBy, setSortBy] = useState<"newest" | "rating-desc" | "rating-asc">("newest");
 
   const loadFeedback = async () => {
-    setLoading(true);
-    try {
-      const list = await db.getAllFeedback();
-      setFeedbackList(list);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load feedback records.");
-    } finally {
-      setLoading(false);
-    }
+    setTimeout(async () => {
+      setLoading(true);
+      try {
+        const list = await db.getAllFeedback();
+        setFeedbackList(list);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load feedback records.");
+      } finally {
+        setLoading(false);
+      }
+    }, 0);
   };
 
   useEffect(() => {
     loadFeedback();
   }, []);
 
-  // Filter & Sort logic
-  useEffect(() => {
+  // Filter & Sort logic computed on render
+  const filteredList = useMemo(() => {
     let result = [...feedbackList];
 
     if (categoryFilter !== "all") {
@@ -78,7 +79,7 @@ export default function AdminFeedbackPage() {
       result.sort((a, b) => a.rating - b.rating);
     }
 
-    setFilteredList(result);
+    return result;
   }, [feedbackList, categoryFilter, statusFilter, priorityFilter, sortBy]);
 
   const handleUpdate = async (
@@ -215,7 +216,7 @@ export default function AdminFeedbackPage() {
               <select
                 id="sortFilterSelect"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as "newest" | "rating-desc" | "rating-asc")}
                 className="bg-muted/30 border border-border rounded-lg py-1 px-2 text-foreground focus:outline-none"
               >
                 <option value="newest">Newest First</option>
@@ -296,7 +297,7 @@ export default function AdminFeedbackPage() {
                           <select
                             value={currentPriority || ""}
                             onChange={(e) =>
-                              handleUpdate(item.id, currentStatus, (e.target.value || null) as any)
+                              handleUpdate(item.id, currentStatus, (e.target.value || null) as "high" | "medium" | "low" | null)
                             }
                             className={`text-[10px] font-bold rounded-lg border px-1.5 py-1 focus:outline-none cursor-pointer uppercase ${
                               currentPriority === "high"
@@ -320,7 +321,7 @@ export default function AdminFeedbackPage() {
                           <label className="text-[9px] font-bold text-muted-foreground uppercase">Status</label>
                           <select
                             value={currentStatus}
-                            onChange={(e) => handleUpdate(item.id, e.target.value as any, currentPriority)}
+                            onChange={(e) => handleUpdate(item.id, e.target.value as "open" | "investigating" | "resolved", currentPriority)}
                             className={`text-[10px] font-bold rounded-lg border px-1.5 py-1 focus:outline-none cursor-pointer uppercase ${
                               currentStatus === "resolved"
                                 ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"

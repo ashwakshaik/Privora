@@ -32,6 +32,9 @@ export interface DBSettings {
   home_address: string;
   phone_number: string;
   autopilot_enabled: boolean;
+  scan_frequency?: "weekly" | "monthly" | "quarterly";
+  email_alerts_enabled?: boolean;
+  report_delivery_enabled?: boolean;
   updated_at: string;
 }
 
@@ -200,6 +203,9 @@ export const db = {
             home_address: "",
             phone_number: "",
             autopilot_enabled: false,
+            scan_frequency: "monthly",
+            email_alerts_enabled: true,
+            report_delivery_enabled: true,
             updated_at: new Date().toISOString()
           };
           return defSettings;
@@ -218,6 +224,9 @@ export const db = {
           home_address: "",
           phone_number: "",
           autopilot_enabled: false,
+          scan_frequency: "monthly",
+          email_alerts_enabled: true,
+          report_delivery_enabled: true,
           updated_at: new Date().toISOString()
         };
         localStorage.setItem("privora_mock_settings", JSON.stringify(settingsMap));

@@ -89,7 +89,7 @@ export async function queryExternalPrivacyAPIs(
       if (response.ok) {
         const data = await response.json();
         if (data.records && Array.isArray(data.records)) {
-          data.records.forEach((rec: any) => {
+          data.records.forEach((rec: { broker?: string; address_preview?: string; risk_level?: string; notes?: string }) => {
             exposures.push({
               broker_name: rec.broker || "DataBroker API",
               record_preview: rec.address_preview || "Matched PII Profile",

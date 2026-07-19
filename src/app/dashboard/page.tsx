@@ -15,12 +15,15 @@ import {
   Info,
   Clock,
   Settings,
+  TrendingUp,
+  Calendar,
+  Bell,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
-import { toast } from "sonner";
 import { useAuth } from "@/providers/auth-provider";
 import { db } from "@/lib/supabase";
 
@@ -44,6 +47,13 @@ interface TimelineItem {
   status: string;
 }
 
+interface NotificationItem {
+  id: string;
+  message: string;
+  time: string;
+  read: boolean;
+}
+
 export default function DashboardOverview() {
   const { user } = useAuth();
   const [scoreProgress, setScoreProgress] = useState(0);
@@ -56,6 +66,18 @@ export default function DashboardOverview() {
 
   const [riskAlerts, setRiskAlerts] = useState<RiskItem[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<TimelineItem[]>([]);
+  
+  // Day 2 Scheduler States
+  const [lastScanDate, setLastScanDate] = useState("Never Scanned");
+  const [nextScanDate, setNextScanDate] = useState("Autopilot Off");
+
+  // Day 5 Advanced Widgets States
+  const [highRiskCount, setHighRiskCount] = useState(0);
+  const [medRiskCount, setMedRiskCount] = useState(0);
+  const [lowRiskCount, setLowRiskCount] = useState(0);
+  const [removalSuccessRate, setRemovalSuccessRate] = useState(100);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [historicalScores, setHistoricalScores] = useState<{ date: string; score: number }[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -72,6 +94,7 @@ export default function DashboardOverview() {
         const exposed = removals.filter(r => r.current_status === "exposed" || r.current_status === "refused").length;
         const processing = removals.filter(r => r.current_status === "processing" || r.current_status === "pending").length;
         const completed = removals.filter(r => r.current_status === "completed").length;
+        const totalRemovals = removals.length;
 
         // Dynamic stats array
         setStats([
@@ -88,12 +111,24 @@ export default function DashboardOverview() {
         const risks = removals
           .filter(r => r.current_status === "exposed" || r.current_status === "refused" || r.current_status === "processing")
           .slice(0, 3)
-          .map(r => ({
-            source: r.broker_name,
-            type: r.broker_name.includes("Whitepages") ? "Home Address" : r.broker_name.includes("Spokeo") ? "Phone Number" : "Email Address",
-            detail: r.tracking_log[r.tracking_log.length - 1] || "Exposed registry profile.",
-            severity: r.broker_name.includes("Whitepages") || r.broker_name.includes("Spokeo") ? "High" : "Medium"
-          }));
+          .map(r => {
+            const name = r.broker_name.toLowerCase();
+            let sev = "Low";
+            let type = "Public Profile Record";
+            if (name.includes("whitepages") || name.includes("spokeo") || name.includes("privateeye")) {
+              sev = "High";
+              type = name.includes("whitepages") ? "Home Address" : "Phone Number";
+            } else if (name.includes("radaris") || name.includes("leakcheck") || name.includes("haveibeenpwned")) {
+              sev = "Medium";
+              type = "Contact Email Leak";
+            }
+            return {
+              source: r.broker_name,
+              type,
+              detail: r.tracking_log[r.tracking_log.length - 1] || "Exposed profile record.",
+              severity: sev
+            };
+          });
         
         setRiskAlerts(risks.length > 0 ? risks : [
           { source: "No Risks Found", type: "Clean Boundary", detail: "Active scanning shows zero exposed registries.", severity: "Low" }
@@ -111,8 +146,75 @@ export default function DashboardOverview() {
             });
           }
         });
-
         setTimelineEvents(events.slice(0, 4));
+
+        // Day 2: Fetch Scans & Calculate Last/Next Scan dates
+        const scans = await db.getScans(user.id);
+        const userSettings = await db.getSettings(user.id);
+        
+        const latestScan = scans.find(s => s.status === "completed");
+        let lastDate: Date | null = null;
+        
+        if (latestScan) {
+          lastDate = new Date(latestScan.triggered_at);
+          setLastScanDate(lastDate.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }));
+        } else {
+          setLastScanDate("Never Scanned");
+        }
+
+        if (userSettings.autopilot_enabled) {
+          const baseDate = lastDate || new Date();
+          const freq = userSettings.scan_frequency || "monthly";
+          let addDays = 30;
+          if (freq === "weekly") addDays = 7;
+          else if (freq === "quarterly") addDays = 90;
+
+          const nextDate = new Date(baseDate.getTime() + addDays * 24 * 3600000);
+          setNextScanDate(nextDate.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }));
+        } else {
+          setNextScanDate("Autopilot Off");
+        }
+
+        // Day 5: Risk Severity Breakdown
+        let highCount = 0;
+        let medCount = 0;
+        let lowCount = 0;
+        removals.forEach(r => {
+          if (r.current_status !== "completed") {
+            const name = r.broker_name.toLowerCase();
+            if (name.includes("whitepages") || name.includes("spokeo") || name.includes("privateeye")) {
+              highCount++;
+            } else if (name.includes("radaris") || name.includes("leakcheck") || name.includes("haveibeenpwned")) {
+              medCount++;
+            } else {
+              lowCount++;
+            }
+          }
+        });
+        setHighRiskCount(highCount);
+        setMedRiskCount(medCount);
+        setLowRiskCount(lowCount);
+
+        // Day 5: Removal Success Rate
+        const rate = totalRemovals === 0 ? 100 : Math.round((completed / totalRemovals) * 100);
+        setRemovalSuccessRate(rate);
+
+        // Day 5: Historical Scores (30 days trend simulation)
+        setHistoricalScores([
+          { date: "Jul 01", score: 34 },
+          { date: "Jul 05", score: 38 },
+          { date: "Jul 10", score: 42 },
+          { date: "Jul 15", score: 55 },
+          { date: "Jul 18", score: scoreRecord.overall_score }
+        ]);
+
+        // Day 5: Recent Notifications Feed
+        setNotifications([
+          { id: "1", message: `System: Active privacy scan check completed. ${exposed} leaks identified.`, time: "1 hour ago", read: false },
+          { id: "2", message: `Autopilot: Opt-out request dispatched to Whitepages.com directories.`, time: "3 hours ago", read: false },
+          { id: "3", message: `Stripe Billing: Invoice processed for Pro Subscription account.`, time: "1 day ago", read: true }
+        ]);
+
       } catch (err) {
         console.error("Failed to load dashboard statistics:", err);
       }
@@ -131,19 +233,35 @@ export default function DashboardOverview() {
     <DashboardShell>
       <div className="space-y-8">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left border-b border-border/40 pb-6">
           <div>
             <h1 className="text-3xl font-extrabold text-foreground font-heading">Overview</h1>
             <p className="text-xs text-muted-foreground mt-1.5">
               Welcome back, {user?.firstName || "Ashwak"}. Monitor and secure your digital privacy footprint.
             </p>
           </div>
-          <Link href="/dashboard/scan">
-            <Button className="rounded-xl shadow-premium bg-gradient-to-r from-primary to-secondary text-white border-0 hover:opacity-90">
-              <Search size={15} className="mr-2" />
-              Start Privacy Scan
-            </Button>
-          </Link>
+          
+          {/* Day 2: Last & Next Scan Dynamic Widgets */}
+          <div className="flex flex-wrap items-center gap-3.5">
+            <div className="flex items-center space-x-2 bg-muted/20 border border-border/80 rounded-xl px-3.5 py-1.5 text-xs text-muted-foreground">
+              <Calendar size={13} className="text-zinc-500" />
+              <span className="font-semibold text-foreground">Last Scan:</span>
+              <span>{lastScanDate}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 bg-muted/20 border border-border/80 rounded-xl px-3.5 py-1.5 text-xs text-muted-foreground">
+              <Clock size={13} className="text-zinc-500" />
+              <span className="font-semibold text-foreground">Next Scan:</span>
+              <span>{nextScanDate}</span>
+            </div>
+
+            <Link href="/dashboard/scan">
+              <Button className="rounded-xl shadow-premium bg-gradient-to-r from-primary to-secondary text-white border-0 hover:opacity-90">
+                <Search size={15} className="mr-2" />
+                Start Privacy Scan
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* 1. Exposure Summary Metric Grid */}
@@ -172,74 +290,141 @@ export default function DashboardOverview() {
 
         {/* 2. Split Workspace Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 text-left">
-          {/* Left: Privacy Score & Risk Alerts (2 Columns - 40%) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Privacy Score Widget */}
-            <Card className="border-border/60 bg-card rounded-[22px] shadow-premium flex flex-col justify-between overflow-hidden relative">
-              {/* Subtle top background glow overlay */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent" />
+          
+          {/* Left Block (3 Columns - 60%): Privacy Score & Advanced Analytics */}
+          <div className="lg:col-span-3 space-y-6">
+            
+            {/* Privacy score & 30-Day Trend Combined */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-foreground">Privacy Score</CardTitle>
-                <CardDescription className="text-[11px] text-muted-foreground">
-                  Dynamic digital exposure index.
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="flex flex-col items-center justify-center py-6">
-                {/* Score Circle Gauge */}
-                <div className="relative h-44 w-44 flex items-center justify-center">
-                  <svg className="h-full w-full transform -rotate-90">
-                    <circle
-                      cx="88"
-                      cy="88"
-                      r="76"
-                      stroke="currentColor"
-                      strokeWidth="9"
-                      className="text-muted/20 fill-none"
-                    />
-                    <motion.circle
-                      cx="88"
-                      cy="88"
-                      r="76"
-                      stroke="url(#purpleBlueCyan)"
-                      strokeWidth="9"
-                      strokeDasharray={477}
-                      strokeDashoffset={477 - (477 * scoreProgress) / 100}
-                      className="fill-none stroke-linecap-round"
-                      transition={{ duration: 1.2, ease: "easeOut" }}
-                    />
-                    {/* SVG Gradient definitions */}
-                    <defs>
-                      <linearGradient id="purpleBlueCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(262, 83%, 58%)" />
-                        <stop offset="50%" stopColor="hsl(221, 83%, 53%)" />
-                        <stop offset="100%" stopColor="hsl(187, 92%, 45%)" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-3xl font-extrabold text-foreground tracking-tight">{scoreProgress}%</span>
-                    <span className="text-[9px] text-destructive font-bold uppercase tracking-wider mt-1">
-                      Exposed
-                    </span>
+              {/* Privacy Score Ring Gauge */}
+              <Card className="md:col-span-2 border-border/60 bg-card rounded-[22px] shadow-premium flex flex-col justify-between overflow-hidden relative">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent" />
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs font-bold text-foreground">Privacy Score</CardTitle>
+                  <CardDescription className="text-[9px] text-muted-foreground">Digital exposure score</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-6">
+                  <div className="relative h-32 w-32 flex items-center justify-center">
+                    <svg className="h-full w-full transform -rotate-90">
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="52"
+                        stroke="currentColor"
+                        strokeWidth="7"
+                        className="text-muted/10 fill-none"
+                      />
+                      <motion.circle
+                        cx="64"
+                        cy="64"
+                        r="52"
+                        stroke="url(#dashboardPurpleGrad)"
+                        strokeWidth="7"
+                        strokeDasharray={327}
+                        strokeDashoffset={327 - (327 * scoreProgress) / 100}
+                        className="fill-none stroke-linecap-round"
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                      />
+                      <defs>
+                        <linearGradient id="dashboardPurpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="hsl(262, 83%, 58%)" />
+                          <stop offset="100%" stopColor="hsl(221, 83%, 53%)" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute flex flex-col items-center justify-center">
+                      <span className="text-2xl font-extrabold text-foreground tracking-tight">{scoreProgress}%</span>
+                      <span className="text-[8px] text-zinc-500 font-bold uppercase mt-0.5">Score</span>
+                    </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Score Status Alert */}
-                <div className="mt-6 flex items-center space-x-2 bg-destructive/5 border border-destructive/10 rounded-xl px-4 py-2 text-destructive text-[11px]">
-                  <ShieldAlert size={14} className="animate-pulse" />
-                  <span>12 exposed broker files require deletion</span>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Day 5: 30-Day Privacy Score Trend Widget */}
+              <Card className="md:col-span-3 border-border/60 bg-card rounded-[22px] shadow-premium flex flex-col justify-between overflow-hidden">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs font-bold text-foreground">Privacy Trend (30 Days)</CardTitle>
+                  <CardDescription className="text-[9px] text-muted-foreground">Rating trajectory over last sweeps</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 flex items-end justify-between border-b border-l border-border/50 pb-2 pl-3 h-24 mt-2 relative mx-4">
+                  {historicalScores.map((h, idx) => (
+                    <div key={idx} className="w-[18%] flex flex-col items-center">
+                      <div className="w-2 bg-primary/20 rounded-full flex items-end justify-center h-16">
+                        <div
+                          style={{ height: `${h.score}%` }}
+                          className="w-full bg-primary rounded-full"
+                        />
+                      </div>
+                      <span className="text-[8px] text-muted-foreground font-mono mt-1">{h.date} ({h.score}%)</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Day 5: Risk Severity Distribution & Removal Success Rate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Risk Distribution Card */}
+              <Card className="border-border/60 bg-card rounded-[22px] shadow-premium">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold text-foreground">Risk Distribution</CardTitle>
+                  <CardDescription className="text-[9px] text-muted-foreground">Active leaks categorized by risk level</CardDescription>
+                </CardHeader>
+                <CardContent className="py-2 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-destructive font-medium flex items-center"><AlertTriangle size={11} className="mr-1" /> High Severity</span>
+                    <span className="font-bold">{highRiskCount}</span>
+                  </div>
+                  <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden">
+                    <div style={{ width: `${highRiskCount * 12}%` }} className="bg-destructive h-full rounded-full" />
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs mt-3">
+                    <span className="text-amber-500 font-medium flex items-center"><AlertTriangle size={11} className="mr-1" /> Medium Severity</span>
+                    <span className="font-bold">{medRiskCount}</span>
+                  </div>
+                  <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden">
+                    <div style={{ width: `${medRiskCount * 12}%` }} className="bg-amber-500 h-full rounded-full" />
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs mt-3">
+                    <span className="text-cyan-500 font-medium flex items-center"><Info size={11} className="mr-1" /> Low Severity</span>
+                    <span className="font-bold">{lowRiskCount}</span>
+                  </div>
+                  <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden">
+                    <div style={{ width: `${lowRiskCount * 12}%` }} className="bg-cyan-500 h-full rounded-full" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Removal Success Rate Card */}
+              <Card className="border-border/60 bg-card rounded-[22px] shadow-premium flex flex-col justify-between">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold text-foreground">Removal Success Rate</CardTitle>
+                  <CardDescription className="text-[9px] text-muted-foreground">Percentage of completed opt-outs</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-4">
+                  <div className="text-3xl font-black text-foreground">{removalSuccessRate}%</div>
+                  <p className="text-[9px] text-muted-foreground mt-1">Confirmed database removals</p>
+                  
+                  <div className="w-full bg-muted/40 h-3 rounded-full mt-4 overflow-hidden relative">
+                    <div
+                      style={{ width: `${removalSuccessRate}%` }}
+                      className="bg-gradient-to-r from-primary to-emerald-500 h-full rounded-full"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Risk Alerts List */}
             <Card className="border-border/60 bg-card rounded-[22px] shadow-premium">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold text-foreground">Risk Alerts</CardTitle>
                 <CardDescription className="text-[11px] text-muted-foreground">
-                  Highest severity exposed records.
+                  Highest severity exposed records requiring attention.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3.5">
@@ -247,9 +432,12 @@ export default function DashboardOverview() {
                   <div key={idx} className="flex justify-between items-start p-3 bg-muted/30 border border-border/30 rounded-xl">
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-foreground leading-none">{alert.source}</p>
-                      <p className="text-[10px] text-muted-foreground leading-none">{alert.detail}</p>
+                      <span className="text-[9px] font-mono text-zinc-500 block">{alert.type}</span>
+                      <p className="text-[10px] text-muted-foreground leading-none mt-1">{alert.detail}</p>
                     </div>
-                    <Badge className="bg-destructive/10 text-destructive border-destructive/20 rounded-full text-[9px] font-semibold px-2 py-0.5">
+                    <Badge className={`border-0 rounded-full text-[9px] font-semibold px-2 py-0.5 uppercase ${
+                      alert.severity === "High" ? "bg-destructive/15 text-destructive" : "bg-amber-500/10 text-amber-600"
+                    }`}>
                       {alert.severity}
                     </Badge>
                   </div>
@@ -258,8 +446,33 @@ export default function DashboardOverview() {
             </Card>
           </div>
 
-          {/* Right: Privacy Insights & Timeline (3 Columns - 60%) */}
-          <div className="lg:col-span-3 space-y-6">
+          {/* Right Block (2 Columns - 40%): Notifications & Activity Feed */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Day 5: Recent Notifications Feed */}
+            <Card className="border-border/60 bg-card rounded-[22px] shadow-premium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5"><Bell size={14} className="text-primary" /> Notifications Feed</CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  Alert logs and automated tasks telemetry.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3.5">
+                {notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`p-3 rounded-xl border transition text-xs relative ${
+                      notif.read ? "bg-muted/10 border-border/30 text-muted-foreground" : "bg-primary/5 border-primary/20 text-foreground"
+                    }`}
+                  >
+                    {!notif.read && <div className="absolute top-3.5 right-3 h-2 w-2 rounded-full bg-primary" />}
+                    <p className="text-[11px] font-medium leading-relaxed pr-3">{notif.message}</p>
+                    <span className="text-[9px] text-muted-foreground block mt-1">{notif.time}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
             {/* Privacy Insights */}
             <Card className="border-border/60 bg-card rounded-[22px] shadow-premium">
               <CardHeader className="pb-3">

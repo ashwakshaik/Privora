@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
+import { useAuth } from "@/providers/auth-provider";
+import { db } from "@/lib/supabase";
 
 interface Message {
   sender: "user" | "myrah";
@@ -26,16 +28,50 @@ interface Message {
 }
 
 export default function RoadmapPlanningPage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: "myrah",
-      text: "Hello! I am MYRAH, your personal AI Privacy Assistant. I am here to help you understand your data broker exposure, draft opt-out legal requests, or outline your rights under CCPA/GDPR. Ask me anything!",
+      text: "Hello! I am MYRAH, your personal AI Privacy Assistant. Loading your exposure context...",
       timestamp: new Date(),
     },
   ]);
   const [inputVal, setInputVal] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchContext = async () => {
+      try {
+        const removals = await db.getRemovalRequests(user.id);
+        const scoreRecord = await db.getLatestScore(user.id);
+        const active = removals.filter(r => r.current_status !== "completed");
+        
+        if (active.length > 0) {
+          const listNames = active.slice(0, 3).map(r => r.broker_name).join(", ");
+          setMessages([
+            {
+              sender: "myrah",
+              text: `Hello ${user.firstName || "Ashwak"}! I am MYRAH, your AI Privacy Assistant. I have analyzed your scans: you currently have ${active.length} active exposures (including ${listNames}) and your Privacy Score is at ${scoreRecord.overall_score}%. I recommend prioritizing automated opt-outs. How can I help you today?`,
+              timestamp: new Date()
+            }
+          ]);
+        } else {
+          setMessages([
+            {
+              sender: "myrah",
+              text: `Hello ${user.firstName || "Ashwak"}! I am MYRAH, your AI Privacy Assistant. Good news: your Privacy Score is 100% and there are zero active exposures detected on monitored registries. How can I help you today?`,
+              timestamp: new Date()
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to load context for MYRAH:", err);
+      }
+    };
+    fetchContext();
+  }, [user]);
 
   const roadmapMilestones = [
     {
@@ -164,7 +200,7 @@ Sincerely,
         <div>
           <h1 className="text-3xl font-extrabold text-foreground font-heading">Roadmap & AI Sandbox</h1>
           <p className="text-xs text-muted-foreground mt-1.5">
-            Explore Privora's Version 1.1 development milestones and interact with MYRAH.
+            Explore Privora&apos;s Version 1.1 development milestones and interact with MYRAH.
           </p>
         </div>
 
