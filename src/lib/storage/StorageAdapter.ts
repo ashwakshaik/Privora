@@ -6,7 +6,10 @@ import {
   DBScanResult,
   DBRemovalRequest,
   DBReport,
-  DBFeedback
+  DBFeedback,
+  DBMonitoringTarget,
+  DBMonitoringHistory,
+  DBScanFeedback
 } from "./types";
 
 export interface StorageAdapter {
@@ -29,4 +32,18 @@ export interface StorageAdapter {
   submitFeedback(userId: string, category: "bug" | "suggestion" | "other", rating: number, message: string): Promise<DBFeedback>;
   getAllFeedback(): Promise<DBFeedback[]>;
   updateFeedbackStatusAndPriority(feedbackId: string, status: "open" | "investigating" | "resolved", priority: "high" | "medium" | "low" | null): Promise<DBFeedback>;
+  
+  // Continuous Monitoring & Sweeps
+  getMonitoringTargets(userId: string): Promise<DBMonitoringTarget[]>;
+  createMonitoringTarget(userId: string, type: DBMonitoringTarget["type"], target: string, frequency: DBMonitoringTarget["frequency"]): Promise<DBMonitoringTarget>;
+  updateMonitoringTarget(targetId: string, data: Partial<DBMonitoringTarget>): Promise<DBMonitoringTarget>;
+  deleteMonitoringTarget(targetId: string): Promise<void>;
+  getAllActiveMonitoringTargets(): Promise<DBMonitoringTarget[]>;
+  saveMonitoringHistory(targetId: string, status: "success" | "error", score: number, changes: boolean, summary?: string): Promise<DBMonitoringHistory>;
+  getMonitoringHistory(targetId: string): Promise<DBMonitoringHistory[]>;
+
+  // Scan Rating Feedback
+  submitScanFeedback(userId: string, scanId: string, rating: number, comment?: string, helpful?: boolean): Promise<DBScanFeedback>;
+  getScanFeedback(scanId: string): Promise<DBScanFeedback[]>;
+  getAdminMetrics(): Promise<any>;
 }

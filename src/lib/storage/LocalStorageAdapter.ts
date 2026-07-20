@@ -7,7 +7,10 @@ import {
   DBScanResult,
   DBRemovalRequest,
   DBReport,
-  DBFeedback
+  DBFeedback,
+  DBMonitoringTarget,
+  DBMonitoringHistory,
+  DBScanFeedback
 } from "./types";
 
 // Helper to initialize local storage mock DB tables
@@ -20,6 +23,9 @@ const initMockDB = () => {
   if (!localStorage.getItem("privora_mock_removal_requests")) localStorage.setItem("privora_mock_removal_requests", "[]");
   if (!localStorage.getItem("privora_mock_reports")) localStorage.setItem("privora_mock_reports", "[]");
   if (!localStorage.getItem("privora_mock_privacy_scores")) localStorage.setItem("privora_mock_privacy_scores", "[]");
+  if (!localStorage.getItem("privora_mock_monitoring_targets")) localStorage.setItem("privora_mock_monitoring_targets", "[]");
+  if (!localStorage.getItem("privora_mock_monitoring_history")) localStorage.setItem("privora_mock_monitoring_history", "[]");
+  if (!localStorage.getItem("privora_mock_scan_feedback")) localStorage.setItem("privora_mock_scan_feedback", "[]");
 };
 
 export class LocalStorageAdapter implements StorageAdapter {
@@ -454,5 +460,133 @@ export class LocalStorageAdapter implements StorageAdapter {
       return feedbackList[idx];
     }
     throw new Error("Feedback record not found");
+  }
+
+  async getMonitoringTargets(userId: string): Promise<DBMonitoringTarget[]> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    return targets.filter((t: DBMonitoringTarget) => t.user_id === userId);
+  }
+
+  async createMonitoringTarget(
+    userId: string,
+    type: DBMonitoringTarget["type"],
+    target: string,
+    frequency: DBMonitoringTarget["frequency"]
+  ): Promise<DBMonitoringTarget> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    const newTarget: DBMonitoringTarget = {
+      id: `mon_${Math.random().toString(36).substring(2, 11)}`,
+      user_id: userId,
+      type,
+      target,
+      enabled: true,
+      frequency,
+      created_at: new Date().toISOString(),
+      last_scan: new Date().toISOString()
+    };
+    targets.push(newTarget);
+    localStorage.setItem("privora_mock_monitoring_targets", JSON.stringify(targets));
+    return newTarget;
+  }
+
+  async updateMonitoringTarget(targetId: string, data: Partial<DBMonitoringTarget>): Promise<DBMonitoringTarget> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    const idx = targets.findIndex((t: DBMonitoringTarget) => t.id === targetId);
+    if (idx === -1) throw new Error("Monitoring target not found");
+    targets[idx] = { ...targets[idx], ...data };
+    localStorage.setItem("privora_mock_monitoring_targets", JSON.stringify(targets));
+    return targets[idx];
+  }
+
+  async deleteMonitoringTarget(targetId: string): Promise<void> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    const filtered = targets.filter((t: DBMonitoringTarget) => t.id !== targetId);
+    localStorage.setItem("privora_mock_monitoring_targets", JSON.stringify(filtered));
+  }
+
+  async getAllActiveMonitoringTargets(): Promise<DBMonitoringTarget[]> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    return targets.filter((t: DBMonitoringTarget) => t.enabled);
+  }
+
+  async saveMonitoringHistory(
+    targetId: string,
+    status: "success" | "error",
+    score: number,
+    changes: boolean,
+    summary?: string
+  ): Promise<DBMonitoringHistory> {
+    initMockDB();
+    const history = JSON.parse(localStorage.getItem("privora_mock_monitoring_history") || "[]");
+    const newHistory: DBMonitoringHistory = {
+      id: `hsy_${Math.random().toString(36).substring(2, 11)}`,
+      target_id: targetId,
+      status,
+      risk_score: score,
+      changes_detected: changes,
+      change_summary: summary,
+      created_at: new Date().toISOString()
+    };
+    history.push(newHistory);
+    localStorage.setItem("privora_mock_monitoring_history", JSON.stringify(history));
+    return newHistory;
+  }
+
+  async getMonitoringHistory(targetId: string): Promise<DBMonitoringHistory[]> {
+    initMockDB();
+    const history = JSON.parse(localStorage.getItem("privora_mock_monitoring_history") || "[]");
+    return history.filter((h: DBMonitoringHistory) => h.target_id === targetId);
+  }
+
+  async submitScanFeedback(
+    userId: string,
+    scanId: string,
+    rating: number,
+    comment?: string,
+    helpful?: boolean
+  ): Promise<DBScanFeedback> {
+    initMockDB();
+    const feedback = JSON.parse(localStorage.getItem("privora_mock_scan_feedback") || "[]");
+    const newFeedback: DBScanFeedback = {
+      id: `sf_${Math.random().toString(36).substring(2, 11)}`,
+      user_id: userId,
+      scan_id: scanId,
+      rating,
+      comment,
+      helpful,
+      created_at: new Date().toISOString()
+    };
+    feedback.push(newFeedback);
+    localStorage.setItem("privora_mock_scan_feedback", JSON.stringify(feedback));
+    return newFeedback;
+  }
+
+  async getScanFeedback(scanId: string): Promise<DBScanFeedback[]> {
+    initMockDB();
+    const feedback = JSON.parse(localStorage.getItem("privora_mock_scan_feedback") || "[]");
+    return feedback.filter((f: DBScanFeedback) => f.scan_id === scanId);
+  }
+
+  async getAdminMetrics(): Promise<any> {
+    initMockDB();
+    const targets = JSON.parse(localStorage.getItem("privora_mock_monitoring_targets") || "[]");
+    const feedback = JSON.parse(localStorage.getItem("privora_mock_scan_feedback") || "[]");
+    
+    const sumRatings = feedback.reduce((sum: number, f: DBScanFeedback) => sum + f.rating, 0);
+    const avgRating = feedback.length > 0 ? parseFloat((sumRatings / feedback.length).toFixed(1)) : 5.0;
+
+    return {
+      uptime: "99.98%",
+      cacheHitRate: "78.4%",
+      activeMonitorsCount: targets.length,
+      avgFeedbackRating: avgRating,
+      totalAlertsSent: 142,
+      scanResponseTimeMs: 412
+    };
   }
 }

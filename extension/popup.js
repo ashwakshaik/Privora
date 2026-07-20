@@ -1,96 +1,65 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const scoreEl = document.getElementById("privacyScore");
-  const ratingEl = document.getElementById("scoreRating");
-  const siteDetailsEl = document.getElementById("siteDetails");
+document.addEventListener("DOMContentLoaded", () => {
+  const statusBadge = document.getElementById("statusBadge");
+  const targetUrlEl = document.getElementById("targetUrl");
+  const scoreValEl = document.getElementById("scoreVal");
+  const sslGradeEl = document.getElementById("sslGrade");
+  const safeBrowsingEl = document.getElementById("safeBrowsing");
+  const phishingFlagEl = document.getElementById("phishingFlag");
+  const scanBtn = document.getElementById("scanBtn");
 
-  // 1. Fetch current tab info
-  if (typeof chrome !== "undefined" && chrome.tabs) {
+  function runCheck() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs && tabs[0]) {
-        const url = new URL(tabs[0].url);
-        const domain = url.hostname;
-        
-        siteDetailsEl.textContent = `${domain} - Checked (No exposures)`;
-        
-        // Custom warning indicators for data broker domains
-        const domainLower = domain.toLowerCase();
-        if (
-          domainLower.includes("whitepages") || 
-          domainLower.includes("spokeo") || 
-          domainLower.includes("radaris") || 
-          domainLower.includes("beenverified")
-        ) {
-          siteDetailsEl.parentNode.style.backgroundColor = "rgba(239, 68, 68, 0.05)";
-          siteDetailsEl.parentNode.style.borderColor = "rgba(239, 68, 68, 0.1)";
-          const dot = siteDetailsEl.parentNode.querySelector(".status-dot");
-          if (dot) {
-            dot.style.backgroundColor = "#EF4444";
-            dot.style.boxShadow = "0 0 8px #EF4444";
+      const activeTab = tabs[0];
+      if (!activeTab || !activeTab.url) return;
+
+      const url = new URL(activeTab.url);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        statusBadge.textContent = "System";
+        targetUrlEl.textContent = "Internal page";
+        scoreValEl.textContent = "100";
+        sslGradeEl.textContent = "N/A";
+        safeBrowsingEl.textContent = "Safe";
+        phishingFlagEl.textContent = "No";
+        return;
+      }
+
+      targetUrlEl.textContent = url.hostname;
+      statusBadge.textContent = "Checking...";
+
+      // Send threat query task message to background worker
+      chrome.runtime.sendMessage({ action: "checkUrl", url: activeTab.url }, (response) => {
+        if (response && response.success) {
+          const payload = response.data;
+          scoreValEl.textContent = `${payload.score}%`;
+          
+          if (payload.score < 50) {
+            statusBadge.textContent = "Danger";
+            statusBadge.className = "status-badge critical";
+          } else {
+            statusBadge.textContent = "Secure";
+            statusBadge.className = "status-badge safe";
           }
-          siteDetailsEl.style.color = "#EF4444";
-          siteDetailsEl.textContent = `Warning: ${domain} holds exposed profiles.`;
+
+          // Parse findings
+          const results = payload.results || [];
+          const sslRes = results.find((r) => r.provider.includes("SSL"));
+          const sbRes = results.find((r) => r.provider.includes("Safe Browsing"));
+          const ptRes = results.find((r) => r.provider.includes("PhishTank"));
+          const opRes = results.find((r) => r.provider.includes("OpenPhish"));
+
+          sslGradeEl.textContent = sslRes?.metadata?.sslGrade || "A+";
+          safeBrowsingEl.textContent = sbRes?.severity === "critical" ? "Flagged" : "Clean";
+          
+          const isPhish = ptRes?.metadata?.phishingDetected || opRes?.metadata?.phishingDetected || false;
+          phishingFlagEl.textContent = isPhish ? "Phishing Site" : "Clean";
+        } else {
+          statusBadge.textContent = "Offline";
+          scoreValEl.textContent = "Error";
         }
-      }
+      });
     });
-  } else {
-    siteDetailsEl.textContent = "localhost - Development Mode";
   }
 
-  // 2. Fetch or load score from storage, or fallback to mock
-  if (typeof chrome !== "undefined" && chrome.storage) {
-    chrome.storage.local.get(["userPrivacyScore"], (res) => {
-      if (res.userPrivacyScore) {
-        const score = res.userPrivacyScore;
-        scoreEl.textContent = `${score}%`;
-        updateRating(score);
-      }
-    });
-  } else {
-    // Local storage mockup fallback
-    try {
-      const mockScore = localStorage.getItem("privora_last_score") || "85";
-      scoreEl.textContent = `${mockScore}%`;
-      updateRating(parseInt(mockScore));
-    } catch {
-      scoreEl.textContent = "85%";
-      updateRating(85);
-    }
-  }
-
-  function updateRating(score) {
-    if (score > 80) {
-      ratingEl.textContent = "Secure";
-      ratingEl.style.color = "#10B981";
-    } else if (score > 50) {
-      ratingEl.textContent = "Medium Risk";
-      ratingEl.style.color = "#F59E0B";
-    } else {
-      ratingEl.textContent = "Exposed / Vulnerable";
-      ratingEl.style.color = "#EF4444";
-    }
-  }
-
-  // Toggle listeners
-  const trackerToggle = document.getElementById("trackerToggle");
-  const cookieToggle = document.getElementById("cookieToggle");
-  const fingerprintToggle = document.getElementById("fingerprintToggle");
-
-  [trackerToggle, cookieToggle, fingerprintToggle].forEach(item => {
-    item.addEventListener("change", () => {
-      const state = {
-        tracker: trackerToggle.checked,
-        cookie: cookieToggle.checked,
-        fingerprint: fingerprintToggle.checked
-      };
-      
-      // Save settings
-      if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.set({ extensionSettings: state });
-      } else {
-        localStorage.setItem("privora_extension_settings", JSON.stringify(state));
-      }
-      
-      console.log("Settings modified:", state);
-    });
-  });
+  scanBtn.addEventListener("click", runCheck);
+  runCheck();
 });

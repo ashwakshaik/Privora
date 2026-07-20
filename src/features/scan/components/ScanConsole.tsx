@@ -41,6 +41,40 @@ export function ScanConsole() {
   const [findings, setFindings] = useState<FindingItem[]>([]);
   const [aiBrief, setAiBrief] = useState<{ summary: string; recommendations: string[] } | null>(null);
 
+  // Scan Rating Feedback States
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [helpful, setHelpful] = useState<boolean | null>(null);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  const submitFeedback = async () => {
+    if (!user || rating === 0) return;
+    setSubmittingFeedback(true);
+    try {
+      const res = await fetch("/api/feedback/rate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          scanId: "manual_scan",
+          rating,
+          comment,
+          helpful: helpful !== null ? helpful : undefined
+        })
+      });
+
+      if (!res.ok) throw new Error("Could not log rating feedback.");
+      toast.success("Feedback submitted. Thank you!");
+      setRating(0);
+      setComment("");
+      setHelpful(null);
+    } catch (err: any) {
+      toast.error(err.message || "Feedback submittal failed.");
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
   const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!queryVal.trim()) {
@@ -323,6 +357,70 @@ export function ScanConsole() {
               </div>
             </Card>
           )}
+
+          {/* Scan Results Rating Form */}
+          <Card className="border-border/60 bg-card rounded-[22px] shadow-premium p-6">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Rate Scan Results</h4>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-muted-foreground">How accurate was this scan?</span>
+                <div className="flex space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className={`text-base focus-visible:ring-2 focus-visible:ring-primary cursor-pointer transition-colors border-0 bg-transparent ${
+                        rating >= star ? "text-amber-500" : "text-zinc-600 hover:text-amber-400"
+                      }`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <span className="text-xs text-muted-foreground">Was this report helpful?</span>
+                <button
+                  type="button"
+                  onClick={() => setHelpful(true)}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg border cursor-pointer transition-all ${
+                    helpful === true ? "bg-emerald-500/10 text-emerald-500 border-emerald-500" : "border-border text-muted-foreground bg-transparent"
+                  }`}
+                >
+                  Yes, helpful
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHelpful(false)}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg border cursor-pointer transition-all ${
+                    helpful === false ? "bg-destructive/10 text-destructive border-destructive" : "border-border text-muted-foreground bg-transparent"
+                  }`}
+                >
+                  No, incorrect
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Tell us how we can improve this threat analysis..."
+                  className="w-full bg-muted/20 border border-border rounded-xl p-3 text-xs text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                  rows={2}
+                />
+              </div>
+
+              <Button
+                onClick={submitFeedback}
+                disabled={rating === 0 || submittingFeedback}
+                className="h-9 px-4 bg-primary text-white text-xs font-semibold rounded-xl border-0 cursor-pointer"
+              >
+                {submittingFeedback ? "Submitting..." : "Submit Rating"}
+              </Button>
+            </div>
+          </Card>
 
           {/* Actions */}
           <div className="flex justify-center pt-2">

@@ -79,3 +79,36 @@ export interface DBFeedback {
   priority?: "high" | "medium" | "low" | null;
   status?: "open" | "investigating" | "resolved" | null;
 }
+
+export interface DBMonitoringTarget {
+  id: string;
+  user_id: string;
+  type: "email" | "website" | "domain" | "password";
+  target: string;
+  enabled: boolean;
+  frequency: "daily" | "weekly" | "monthly";
+  last_scan?: string;
+  next_scan?: string;
+  created_at: string;
+}
+
+export interface DBMonitoringHistory {
+  id: string;
+  target_id: string;
+  status: "success" | "error";
+  risk_score: number;
+  changes_detected: boolean;
+  change_summary?: string;
+  created_at: string;
+}
+
+export interface DBScanFeedback {
+  id: string;
+  user_id: string;
+  scan_id: string;
+  rating: number;
+  comment?: string;
+  helpful?: boolean;
+  created_at: string;
+}
+
