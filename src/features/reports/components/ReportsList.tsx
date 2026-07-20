@@ -103,15 +103,25 @@ export function ReportsList() {
       const doc = new jsPDF();
       
       const removals = await storage.getRemovalRequests(user.id);
+      const scans = await storage.getScans(user.id);
+      
+      let scanResults: any[] = [];
+      if (scans.length > 0) {
+        // Query results of latest scan transaction
+        scanResults = await storage.getScanResults(scans[0].id);
+      }
+
       const activeExposures = removals.filter(r => r.current_status !== "completed");
       
-      const primaryColor = [11, 10, 15];
-      
+      // Document Theme Colors (Privora styling)
+      const primaryColor = [11, 10, 15]; // dark-gray
+      const accentColor = [99, 102, 241]; // indigo-violet
+
       // Header Banner
       doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.rect(0, 0, 210, 38, "F");
 
-      // Brand text
+      // Brand Logo / Header Text
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
@@ -146,7 +156,7 @@ export function ReportsList() {
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(26);
-      doc.setTextColor(99, 102, 241);
+      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
       doc.text(`${latestScore}%`, 14, 112);
       
       doc.setFont("helvetica", "normal");
@@ -163,10 +173,12 @@ export function ReportsList() {
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
+      
+      let yPos = 146;
       if (activeExposures.length === 0) {
-        doc.text("Congratulations, you have zero active exposures. All brokers opt-outs have completed.", 14, 146);
+        doc.text("Congratulations, you have zero active exposures. All brokers opt-outs have completed.", 14, yPos);
+        yPos += 12;
       } else {
-        let yPos = 146;
         activeExposures.forEach((ex, index) => {
           if (yPos > 270) {
             doc.addPage();
@@ -176,6 +188,37 @@ export function ReportsList() {
           doc.text(`${index + 1}. ${ex.broker_name}`, 14, yPos);
           doc.setFont("helvetica", "normal");
           doc.text(`Status: ${ex.current_status.toUpperCase()} | Logs: ${ex.tracking_log[ex.tracking_log.length - 1] || "None"}`, 14, yPos + 5);
+          yPos += 14;
+        });
+      }
+
+      // Verified Scan findings
+      if (yPos > 230) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("VERIFIED THREAT SCAN FINDINGS", 14, yPos);
+      doc.line(14, yPos + 3, 196, yPos + 3);
+      yPos += 10;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      if (scanResults.length === 0) {
+        doc.text("No active vulnerability threat findings verified on record.", 14, yPos);
+      } else {
+        scanResults.forEach((res, index) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+          doc.setFont("helvetica", "bold");
+          doc.text(`${index + 1}. [${res.severity.toUpperCase()}] ${res.broker_name}`, 14, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Detail: ${res.record_preview}`, 14, yPos + 5);
           yPos += 14;
         });
       }
