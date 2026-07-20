@@ -18,9 +18,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DashboardShell } from "@/components/shared/dashboard-shell";
+import { DashboardShell } from "@/features/dashboard/components/DashboardShell";
 import { toast } from "sonner";
-import { db, DBFeedback } from "@/lib/supabase";
+import { storage, DBFeedback } from "@/lib/storage";
+
 
 export default function AdminFeedbackPage() {
   const [feedbackList, setFeedbackList] = useState<DBFeedback[]>([]);
@@ -36,7 +37,7 @@ export default function AdminFeedbackPage() {
     setTimeout(async () => {
       setLoading(true);
       try {
-        const list = await db.getAllFeedback();
+        const list = await storage.getAllFeedback();
         setFeedbackList(list);
       } catch (err) {
         console.error(err);
@@ -88,7 +89,7 @@ export default function AdminFeedbackPage() {
     newPriority: "high" | "medium" | "low" | null
   ) => {
     try {
-      const updated = await db.updateFeedbackStatusAndPriority(feedbackId, newStatus, newPriority);
+      const updated = await storage.updateFeedbackStatusAndPriority(feedbackId, newStatus, newPriority);
       setFeedbackList((prev) =>
         prev.map((f) => (f.id === feedbackId ? { ...f, status: updated.status, priority: updated.priority } : f))
       );

@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DashboardShell } from "@/components/shared/dashboard-shell";
+import { DashboardShell } from "@/features/dashboard/components/DashboardShell";
 import { useAuth } from "@/providers/auth-provider";
-import { db } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 
 interface Message {
   sender: "user" | "myrah";
@@ -44,8 +44,8 @@ export default function RoadmapPlanningPage() {
     if (!user) return;
     const fetchContext = async () => {
       try {
-        const removals = await db.getRemovalRequests(user.id);
-        const scoreRecord = await db.getLatestScore(user.id);
+        const removals = await storage.getRemovalRequests(user.id);
+        const scoreRecord = await storage.getLatestScore(user.id);
         const active = removals.filter(r => r.current_status !== "completed");
         
         if (active.length > 0) {

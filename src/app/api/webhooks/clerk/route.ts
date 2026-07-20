@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/supabase";
+import { storage } from "@/lib/storage";
 
 export async function POST(req: Request) {
   try {
@@ -20,8 +20,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing required user fields" }, { status: 400 });
       }
 
-      // Sync data to Supabase Database
-      const syncedUser = await db.syncUser(id, email, first_name, last_name);
+      // Sync data to Database using unified storage
+      const syncedUser = await storage.syncUser(id, email, first_name, last_name);
       
       console.log(`[Clerk Webhook] Successfully synced user ${id} (${email}) to database.`);
       return NextResponse.json({ success: true, user: syncedUser }, { status: 200 });
