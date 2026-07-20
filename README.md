@@ -143,23 +143,30 @@ Privora/
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Product Roadmap
 
-### Phase 1 (v1.0.0) — Core Platform [Current]
+### Phase 1 — MVP Core (v1.0.0) [Completed]
 - [x] Zero-knowledge mock-authentication & verification setup.
-- [x] Scanning integration with Supabase local database fallback.
-- [x] Interactive Privacy Score gauge.
-- [x] Removal requests scheduler and tracking logs.
+- [x] Interactive Privacy Score index gauge.
 - [x] Settings, PDF Reports export, and interactive dashboard UI.
 
-### Phase 2 (v1.1.0) — Automation & Integrations
-- [ ] Connect live Clerk middleware and active Supabase hosting tables.
-- [ ] Setup scheduled Cron automation for 80+ broker directories.
-- [ ] Add SMS integration for instant data exposure alerts.
+### Phase 2 — Live Security Intelligence (v1.1.0) [Current Release]
+- [x] **Live API Integrations**: Query HIBP, VirusTotal, Safe Browsing, DNS configurations, and RDAP bootstrapping.
+- [x] **k-Anonymity Passwords Checker**: SHA-1 range checks preventing plain-text transmission.
+- [x] **Asynchronous Queue & Cache**: Non-blocking in-memory worker queue and 4-hour TTL caching.
+- [x] **AI Risk Aggregator**: Actionable AI security guidelines generated from verified scan results.
 
-### Phase 3 (v2.0.0) — Mobile Ecosystem
-- [ ] Launch cross-platform native iOS & Android applications.
-- [ ] Implement real-time breach notifications.
+### Phase 3 — Continuous Intelligence Monitoring (v2.0.0)
+- [ ] **Continuous Monitoring**: Daily automated website reputation and breach checks.
+- [ ] **Browser Extension**: Real-time phishing warnings and domain reputation displays.
+- [ ] **GitHub Code Scanner**: Accidentally committed API keys and credentials scanner.
+- [ ] **Email & Browser Security Analyzer**: Deep audits of HSTS, CSP headers, cookies, SPF, and DMARC alignment.
+- [ ] **AI Assistant Widget**: Interactive chatbot querying scan results for user troubleshooting.
+
+### Phase 4 — Enterprise Platform (v3.0.0)
+- [ ] **Team Workspaces & Dashboard**: Multi-domain organization threat boards and member controls.
+- [ ] **Compliance Audits**: Auto-generated summaries for SOC 2, ISO 27001, and GDPR compliance.
+- [ ] **SIEM & Slack Integrations**: Push notifications for critical corporate leaks.
 
 ---
 
@@ -172,4 +179,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Ashwak Shaik** — Project Owner
 *   GitHub: [@ashwakshaik](https://github.com/ashwakshaik)
 *   Email: [ashwakshaik@example.com](mailto:ashwakshaik@example.com)
-*   Project Target URL: [https://privora-nu.vercel.app](https://privora-nu.vercel.app)
+*   Platform Host URL: [https://privora-nu.vercel.app](https://privora-nu.vercel.app)
