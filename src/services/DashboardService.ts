@@ -97,4 +97,67 @@ export class DashboardService {
       events
     };
   }
+
+  static async getPrivacyScore(userId: string) {
+    const scoreRecord = await storage.getLatestScore(userId);
+    const score = scoreRecord.overall_score;
+    let risk: "Low" | "Medium" | "High" | "Critical" = "Low";
+    if (score < 50) risk = "Critical";
+    else if (score < 70) risk = "High";
+    else if (score < 90) risk = "Medium";
+    
+    return { score, risk };
+  }
+
+  static async getRecentAlerts(userId: string) {
+    const removals = await storage.getRemovalRequests(userId);
+    const exposed = removals.filter(r => r.current_status === "exposed" || r.current_status === "refused");
+    return exposed.map(r => ({
+      id: r.id,
+      title: `${r.broker_name} Exposure`,
+      description: r.tracking_log[r.tracking_log.length - 1] || "Exposed personal registry.",
+      severity: (r.broker_name.toLowerCase().includes("whitepages") || r.broker_name.toLowerCase().includes("spokeo")) ? "high" : "medium",
+      time: new Date(r.created_at).toLocaleDateString()
+    })).slice(0, 5);
+  }
+
+  static async getTimeline(userId: string) {
+    const history = await storage.getScoreHistory(userId);
+    return history.map(h => ({
+      date: new Date(h.calculated_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" }),
+      score: h.overall_score
+    }));
+  }
+
+  static async getMonitoring(userId: string) {
+    const targets = await storage.getMonitoringTargets(userId);
+    return targets.map(t => ({
+      id: t.id,
+      type: t.type,
+      target: t.target,
+      status: t.enabled ? "Running" : "Paused",
+      frequency: t.frequency
+    }));
+  }
+
+  static async getRecommendations(userId: string) {
+    const scans = await storage.getScans(userId);
+    if (scans.length === 0) {
+      return [
+        { type: "Configuration Check", description: "Enable Autopilot daily continuous privacy scan monitoring.", priority: "high" },
+        { type: "Secret Scan", description: "Configure SPF policies on active domain zones.", priority: "medium" }
+      ];
+    }
+    const latestResults = await storage.getScanResults(scans[0].id);
+    if (latestResults.length === 0) {
+      return [
+        { type: "Safe Browsing Check", description: "No security issues. Setup a monthly report schedule.", priority: "low" }
+      ];
+    }
+    return latestResults.map(r => ({
+      type: r.broker_name,
+      description: `Fix recommendation: ${r.record_preview}`,
+      priority: r.severity === "high" ? "high" : r.severity === "medium" ? "medium" : "low"
+    })).slice(0, 3);
+  }
 }

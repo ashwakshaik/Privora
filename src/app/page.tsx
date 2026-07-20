@@ -43,40 +43,58 @@ export default function Home() {
 
   const features = [
     {
-      icon: Search,
-      title: "Deep Exposure Scan",
+      icon: Shield,
+      title: "Digital Privacy Twin",
       description:
-        "Locate your personal records, contact information, family ties, and home addresses exposed on public databases.",
+        "Creates a digital twin of your privacy posture, mapping score histories, breach timelines, and security improvements over time.",
     },
     {
-      icon: Trash2,
-      title: "Automated Opt-Outs",
+      icon: Search,
+      title: "Continuous Sweep Engine",
       description:
-        "Submit removals requests automatically to 80+ data brokers on your behalf under legal mandates.",
+        "Automated daily checking across active domains, email breach registries, SSL expiry alerts, and reputation databases.",
+    },
+    {
+      icon: Sparkles,
+      title: "AI-Powered Diagnostics",
+      description:
+        "Provides actionable diagnostic resolutions for SPF/DMARC flags, password exposures, and zero-day threat advisories.",
     },
     {
       icon: Lock,
-      title: "Zero-Knowledge Hash",
+      title: "Secret Credentials Scanner",
       description:
-        "Your search parameters are processed in-memory and hashed. We do not write plain-text search targets to log files.",
+        "Identifies Firebase configurations, AWS keys, Google API credentials, and committed .env configurations inside repositories.",
+    },
+    {
+      icon: CheckCircle,
+      title: "Gamified Privacy Journeys",
+      description:
+        "Earn achievements (like Privacy Expert) as you implement recommended security fixes and lift your privacy score.",
+    },
+    {
+      icon: Eye,
+      title: "Browser Shield Extension",
+      description:
+        "Extension pops displaying SSL configuration grades, Safe Browsing reputations, and full-page phishing overrides.",
     },
   ];
 
   const steps = [
     {
       num: "01",
-      title: "Scan Digital Footprint",
-      description: "Submit your basic profile parameters to query exposure registries.",
+      title: "Map Your Digital Twin",
+      description: "Initialize your posture profile mapping email indices and active domains.",
     },
     {
       num: "02",
-      title: "View Exposure Score",
-      description: "Analyze exposed nodes, broker details, and severity ratings.",
+      title: "Diagnose Real-time Scores",
+      description: "Analyze live indicators covering DMARC, SSL handshakes, and leaked password databases.",
     },
     {
       num: "03",
-      title: "Trigger Auto-Removal",
-      description: "Queue automated removal actions to request records deletion.",
+      title: "Automate Protection",
+      description: "Enable daily scheduler cron sweeps, continuous monitoring, and instant alert workflows.",
     },
   ];
 
@@ -120,7 +138,7 @@ export default function Home() {
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
               className="text-4xl sm:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground max-w-4xl mx-auto leading-tight"
             >
-              Regain Control of Your Personal Data Privacy
+              The AI-Powered Digital Privacy Operating System
             </motion.h1>
 
             <motion.p
@@ -129,7 +147,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] as const }}
               className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mt-6 leading-relaxed"
             >
-              Privora automatically scans public brokers databases, displays exposed contact registries, and queues continuous deletion commands.
+              Privora continuously monitors, analyzes, protects, and improves your online privacy. Map your Digital Twin to track score evolutions and secure leaks automatically.
             </motion.p>
 
             {/* Email form */}
@@ -141,14 +159,14 @@ export default function Home() {
             >
               <Input
                 type="email"
-                placeholder="Enter email to scan"
+                placeholder="Enter email to build your Digital Twin"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 className="h-11 rounded-lg border-input"
               />
               <Link href="/sign-up" className="w-full sm:w-auto">
                 <Button className="h-11 w-full sm:w-auto shadow-lg shadow-primary/10">
-                  Start Free Scan
+                  Deploy Digital Twin
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </Link>
@@ -169,8 +187,8 @@ export default function Home() {
               {/* Header Bar */}
               <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div className="flex items-center space-x-2">
-                  <div className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-xs font-mono text-muted-foreground">SCANNING ACTIVE EXPOSURES...</span>
+                  <div className="h-3 w-3 rounded-full bg-primary animate-pulse" />
+                  <span className="text-xs font-mono text-muted-foreground">PRIVORA SHIELD ACTIVE: MONITORING DIGITAL TWIN</span>
                 </div>
                 <div className="flex space-x-1.5">
                   <div className="h-2.5 w-2.5 rounded-full bg-border" />
@@ -183,30 +201,30 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 text-left">
                 {/* Score Widget */}
                 <div className="border border-border rounded-lg p-5 bg-background flex flex-col items-center justify-center text-center">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Privacy Rating</span>
-                  <div className="h-28 w-28 rounded-full border-4 border-dashed border-primary/20 flex items-center justify-center mt-3 animate-spin-slow">
-                    <div className="h-24 w-24 rounded-full border-4 border-primary flex flex-col items-center justify-center bg-card">
-                      <span className="text-2xl font-extrabold text-foreground">42%</span>
-                      <span className="text-[9px] text-destructive font-semibold">Vulnerable</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Privacy Index</span>
+                  <div className="h-28 w-28 rounded-full border-4 border-dashed border-emerald-500/20 flex items-center justify-center mt-3 animate-spin-slow">
+                    <div className="h-24 w-24 rounded-full border-4 border-emerald-500 flex flex-col items-center justify-center bg-card">
+                      <span className="text-2xl font-extrabold text-foreground">95%</span>
+                      <span className="text-[9px] text-emerald-500 font-semibold">Protected</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Info List */}
                 <div className="md:col-span-2 border border-border rounded-lg p-5 bg-background space-y-3">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Identified Exposures</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Security Diagnostics</span>
                   <div className="space-y-2 font-mono text-xs">
                     <div className="flex justify-between items-center py-1.5 border-b border-border/40">
-                      <span className="text-foreground font-semibold">Whitepages.com</span>
-                      <span className="text-destructive">[ Exposed Address ]</span>
+                      <span className="text-foreground font-semibold">SSL Certificate Verification</span>
+                      <span className="text-emerald-500">[ PASS - Grade A+ ]</span>
                     </div>
                     <div className="flex justify-between items-center py-1.5 border-b border-border/40">
-                      <span className="text-foreground font-semibold">Spokeo.com</span>
-                      <span className="text-destructive">[ Exposed Phone ]</span>
+                      <span className="text-foreground font-semibold">DNS SPF & DMARC Alignment</span>
+                      <span className="text-emerald-500">[ PASS ]</span>
                     </div>
                     <div className="flex justify-between items-center py-1.5 border-b border-border/40">
-                      <span className="text-foreground font-semibold">Radaris.com</span>
-                      <span className="text-amber-500">[ Exposed Email ]</span>
+                      <span className="text-foreground font-semibold">HIBP Credential Leaks Scan</span>
+                      <span className="text-emerald-500">[ 0 Exposed Registries ]</span>
                     </div>
                   </div>
                 </div>
@@ -219,10 +237,10 @@ export default function Home() {
         <section id="features" className="py-20 md:py-28 bg-card/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Equipped with Privacy Protocols
+              The Privacy Operating System Modules
             </h2>
             <p className="text-sm text-muted-foreground mt-4 max-w-xl mx-auto">
-              Privora operates autonomously in the background to guard your records, using zero-knowledge sync algorithms.
+              Deploying 20 core security intelligence modules to map, monitor, and shield your online footprint.
             </p>
 
             <motion.div
@@ -319,10 +337,10 @@ export default function Home() {
         <section className="py-20 md:py-28 bg-gradient-to-b from-background to-card/20 border-t border-border">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Regain Boundaries on Your Privacy
+              Secure Your Online Perimeter Today
             </h2>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Protect your addresses, phone numbers, and relational connections from automated broker searches.
+              Build your digital twin and configure daily security monitoring checks across your digital assets.
             </p>
             <div className="pt-4">
               <Link href="/sign-up">
