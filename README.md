@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://privora.vercel.app"><strong>🌐 Live Demo (Vercel)</strong></a> |
+  <a href="https://privora-nu.vercel.app"><strong>🌐 Live Demo (Vercel)</strong></a> |
   <a href="#key-features">✨ Features</a> |
   <a href="#tech-stack">📦 Tech Stack</a> |
   <a href="#installation">⚙️ Installation</a> |
@@ -172,4 +172,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Ashwak Shaik** — Project Owner
 *   GitHub: [@ashwakshaik](https://github.com/ashwakshaik)
 *   Email: [ashwakshaik@example.com](mailto:ashwakshaik@example.com)
-*   Project Target URL: [https://privora.vercel.app](https://privora.vercel.app)
+*   Project Target URL: [https://privora-nu.vercel.app](https://privora-nu.vercel.app)
